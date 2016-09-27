@@ -4,69 +4,123 @@
 # but we can check /sys/kernel/kexec_crash_size value, if equal to zero, so we need
 # change kernel parameter crashkernel=<>M or other value
 
-K_ARCH="$(uname -m)"
-K_REBOOT="./K_REBOOT"
+# Copyright (C) 2008 CAI Qian <caiqian@redhat.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Update: Qiao Zhao <qzhao@redhat.com>
 
+
+K_REBOOT="./K_REBOOT"
+((INCLUDE_KDUMP_SH)) && return ||INCLUDE_KDUMP_SH=1
+
+############################
+# Set up a new kdump env 
+# Globals:
+#   K_REBOOT
+#   K_ARCH
+# Arguments:
+#   $1 - Set Kernel Aruments, can ignore
+# Return:
+#   None
+#############################
 prepare_kdump()
 {
-	#KERARGS=""
-	if [ ! -f "${K_REBOOT}" ]; then
-		local default=/boot/vmlinuz=`uname -r`
-		[ ! -s "$default" ] && default=/boot/vmlinux-`uname -r`
-		/sbin/grubby --set-default="${default}"
+  local KERARGS=$1
+  if [ ! -f "${K_REBOOT}" ]; then
+    local default
+    default=/boot/vmlinuz/$(uname -r)
+	/sbin/grubby --set-default="${default}"
 	
-		# for uncompressed kernel, i.e. vmlinux
-		[[ ${defalt} == *vmlinux* ]] && {
-			echo "- modifying /etc/sysconfig/kdump properly for 'vmlinux'."
-			sed -i 's/\(KDUMP_IMG\)=.*/\1=vmlinux/' /etc/sysconfig/kdump
+	# for uncompressed kernel, i.e. vmlinux
+	[[ ${default} == *vmlinux* ]] && {
+		debug "- modifying /etc/sysconfig/kdump properly for 'vmlinux'."
+		sed -i 's/\(KDUMP_IMG\)=.*/\1=vmlinux/' /etc/sysconfig/kdump
+	}
+
+	# check /sys/kernel/kexec_crash_size value and update if need.
+	# need restart system when you change this value.
+	grep -q 'crashkernel' <<< "${KERARGS}" || {
+		[[ $(cat /sys/kernel/kexec_crash_size) -eq 0 ]] && {
+			debug "$(grep MemTotal /proc/meminfo)"
+            KERARGS+="$(def_kdump_mem)"
 		}
-
-		# check /sys/kernel/kexec_crash_size value and update if need.
-		# need restart system when you change this value.
-		grep -q 'crashkernel' <<< "${KERARGS}" || {
-			[ `cat /sys/kernel/kexec_crash_size` -eq 0 ] && {
-				echo "`grep MemTotal /proc/meminfo`"
-				KERARGS+="`def_kdump_mem`"
-			}
+	}
+	[ "${KERARGS}" ] && {
+		# need create a file/flag to sign we have do this.
+		touch ${K_REBOOT}
+		debug "- changing boot loader."
+		{
+			/sbin/grubby	\
+				--args="${KERARGS}"	\
+				--update-kernel="${default}" &&
+			if [[ ${K_ARCH} = "s390x" ]]; then zipl; fi
+		} || {
+			error "- change boot loader error!"
 		}
-		[ "${KERARGS}" ] && {
-			# need create a file/flag to sign we have do this.
-			touch ${K_REBOOT}
-			echo "- changing boot loader."
-			{
-				/sbin/grubby	\
-					--args="${KERARGS}"	\
-					--update-kernel="${default}" &&
-				if [ ${K_ARCH} = "s390x" ]; then zipl; fi
-			} || {
-				echo "- change boot loader error!"
-				exit 1
-			}
-			echo "prepare reboot."
-			/usr/bin/sync; /usr/sbin/reboot
-		}
+		debug "prepare reboot."
+		reboot_system
+	}
 
-	fi
-	#[ -f "${K_REBOOT}" ] && rm -f "${K_REBOOT}"
+  fi
+  [ -f "${K_REBOOT}" ] && rm -f "${K_REBOOT}"
 
-	# install kexec-tools package
-	rpm -q kexec-tools || yum install -y kexec-tools || echo "kexec-tools install failed."
+  # install kexec-tools package
+  rpm -q kexec-tools || yum install -y kexec-tools || echo "kexec-tools install failed."
 
-	# enable kdump service: systemd | sys-v
-	/bin/systemctl enable kdump.service || /sbin/chkconfig kdump on
+  # enable kdump service: systemd | sys-v
+  /bin/systemctl enable kdump.service || /sbin/chkconfig kdump on
 }
 
+############################
+# Check vmcore exist.It will do nothing if exist, else exit.
+# Globals:
+#   K_DEFAULT_PATH
+# Arguments:
+#   None
+# Return:
+#   None
+#############################
+check_vmcore_file()
+{
+  debug "- get vmcore file"
+  local filenum
+  filenum=$(find "${K_DEFAULT_PATH}"/*/ -name vmcore| grep -c vmcore )
+  if [[ ${filenum} -eq 0 ]];then
+    error "Can not find vmcore"
+  fi
+}
+
+
+############################
+# Restart Kdump
+# Globals:
+#   None
+# Arguments:
+#   None
+# Return:
+#   None
+#############################
 restart_kdump()
 {
-	echo "- retart kdump service."
-	K_CONFIG="/etc/kdump.conf"
+	debug "- retart kdump service."
 	grep -v ^# "${K_CONFIG}"
 	# delete kdump.img in /boot directory
 	rm -f /boot/initrd-*kdump.img || rm -f /boot/initramfs-*kdump.img
 	/usr/bin/kdumpctl restart 2>&1 | tee /tmp/kdump_restart.log || /sbin/service kdump restart 2>&1 | tee /tmp/kdump_restart.log
-	rc=$?
-	[ $rc -ne 0 ] && echo "- kdump service start failed." && exit 1
-	echo "- kdump service start normal."
+    report_file /tmp/kdump_restart.log
+	[ $? -ne 0 ] && error "- kdump service start failed."
+	debug "- kdump service start normal."
 }
 
 # Config default kdump memory
@@ -94,7 +148,7 @@ configure_kdump_conf()
 	# config_post, config_pre
 	# config_extra
 	# config_default
-	echo "config kdump configuration"
+	debug "config kdump configuration"
 }
 
 config_raw()
@@ -177,10 +231,18 @@ config_default()
 	echo "config default option"
 }
 
+############################
 # trigger methods, the common methods is 'echo c > /proc/sysrq'
+# Globals:
+#	None
+# Arguments:
+#   None
+# Return:
+#   None
+#############################
 trigger_echo_c()
 {
-	echo "trigger by echo c > /proc/sysrq-trigger"
+	echo "c" > /proc/sysrq-trigger
 }
 
 trigger_AltSysC()
