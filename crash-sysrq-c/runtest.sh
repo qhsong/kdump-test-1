@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# This file will cover special test evnironment,
-# like special network, special storage env, etc.
+# Test  [KG-KDUMP-R] "echo c > /proc/sysrq-trigger"
 
 # Copyright (C) 2008 CAI Qian <caiqian@redhat.com>
 #
@@ -19,46 +18,30 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Update: Qiao Zhao <qzhao@redhat.com>
 
+. ../lib/common.sh
 
-((INCLUDE_ENV_SH)) && return ||INCLUDE_ENV_SH=1
-config_vlan()
+readonly C_REBOOT="./C_REBOOT"
+
+main()
 {
-	echo "config vlan"
+  # Maybe need disable avc check
+  if [ ! -f ${C_REBOOT} ]; then
+    prepare_kdump
+    # add config kdump.conf in here if need
+    restart_kdump
+    debug "- boot to 2nd kernel"
+    touch "${C_REBOOT}"
+    sync
+    debug "trigger crash"
+	trigger_echo_c
+  else
+	rm -f "${C_REBOOT}"
+  fi
+
+  # add check vmcore test in here if need
+  check_vmcore_file
+  ready_to_exit
+  exit 0
 }
 
-config_brdige()
-{
-	echo "config bridge"
-}
-
-config_bonding()
-{
-	echo "config bonding"
-}
-
-config_team()
-{
-	echo "config team"
-}
-
-# Special storage env
-config_raid()
-{
-	echo "config raid"
-}
-
-config_iscsi()
-{
-	echo "config iscsi"
-}
-
-config_fcoe()
-{
-	echo "config fcoe"
-}
-
-# Configure kvm guest
-config_kvm_guest()
-{
-	echo "config kvm guest"
-}
+main "$@"
