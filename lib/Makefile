@@ -7,7 +7,7 @@
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-export TEST        := /kernel/kdump/crash-sysrq-c
+export TEST        := /kernel/kdump/lib
 export TESTVERSION := 3.0
 
 include /usr/share/rhts/lib/rhts-make.include
@@ -15,13 +15,13 @@ include /usr/share/rhts/lib/rhts-make.include
 .PHONY: build run clean
 
 
-FILES := Makefile runtest.sh
+FILES := Makefile common.sh crash.sh env.sh kdump.sh log.sh 
 
 build:
-	chmod a+x runtest.sh
+	echo "It can not build."; exit 1;
 
 run: $(FILES) build
-	./runtest.sh
+	echo "This is a library, can not run!"; exit 1;
 
 $(METADATA): Makefile
 	touch $(METADATA)
@@ -33,4 +33,8 @@ $(METADATA): Makefile
 	@echo "Owner:         CAI Qian <caiqian@redhat.com>"    >> $(METADATA)
 	@echo "RhtsRequires:  kernel-kernel-kdump-lib"      >> $(METADATA)
 	@echo "Architectures: i386 x86_64 ia64 ppc ppc64 s390x" >> $(METADATA)
-	@echo "Description:   Crashing system via SysRq-C."     >> $(METADATA)
+	@echo "Description:   Basic Library for Kdump testing."     >> $(METADATA)
+
+
+
+
