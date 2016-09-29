@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Basic Log Library for Kdump 
 
 # Copyright (C) 2008 CAI Qian <caiqian@redhat.com>
@@ -19,7 +19,7 @@
 
 ((INCLUDE_LOG_SH)) && return ||INCLUDE_LOG_SH=1
 
-readonly K_LOG_FILE=${K_WORK_DIRECTORY:-/tmp}/result.log
+readonly K_LOG_FILE=${K_TESTAREA:-/tmp}/result.log
 
 ############################
 # Print Log info into ${K_LOG_FILE}
@@ -34,7 +34,7 @@ readonly K_LOG_FILE=${K_WORK_DIRECTORY:-/tmp}/result.log
 log() {
   local level="$1"
   shift
-  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*" >> ${K_LOG_FILE}
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*" >> "${K_LOG_FILE}"
   if [[ $level == "ERROR" ]]; then
     echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*" >&2
   else
@@ -53,7 +53,15 @@ log() {
 ############################ 
 report_file()
 {
-    debug "Uploading files $1"
+    local filename="$1"
+    if [[ -f "${filename}" ]]; then
+        if [ -z "${JOBID}"  -a  -z "${TASKID}" ]; then
+            rhts-submit-log -l "$filename"
+            #same as curl ${BEAKER_LAB_CONTROLLER_URL}/recipes/${RECIPEID}/tasks/${TASKID}/logs/${filename}:${filename} --upload-file ${filename}
+        fi
+    else
+        debug "file ${filename} not exist!"
+    fi
 }
 
 ###########################

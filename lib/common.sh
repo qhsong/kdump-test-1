@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Common variable and package for Kdump
 
@@ -35,7 +35,7 @@ readonly K_CONFIG="/etc/kdump.conf"
 readonly K_ARCH="$(uname -m)"
 readonly K_KVER="$(uname -r | sed "s/\.$K_ARCH//")"
 readonly K_KVARI="$(echo "$K_KVER" | grep -Eo '(debug|PAE|xen|trace|vanilla)$')"
-readonly K_KVERS="$(echo "$K_KVER" | sed "s/\.*$K_KVARI$//")"
+readonly K_KVERS=${K_KVER//\.*${K_KVARI}$/}
 readonly K_SSH_CONFIG="${HOME}/.ssh/config"
 readonly K_ID_RSA="${SSH_KEY:-/root/.ssh/kdump_id_rsa}"
 readonly K_DEFAULT_PATH="/var/crash"
@@ -44,7 +44,7 @@ readonly IS_RT_KEN=false
 readonly K_SETUP_KDUMP_FILE="./SETUP"
 
 ##############################################
-# Do sth Before Exit
+# Do sth. Before Exit
 # Globals
 #   None
 # Arguments:
@@ -70,5 +70,27 @@ ready_to_exit()
 reboot_system()
 {
   sync
+  if is_beaker_env ; then
+    rhts-reboot
+  else
   reboot
+  fi
+}
+
+##########################################
+# Is Beaker enviroment
+# Globals:
+#   None
+# Arguments:
+#   None
+# Return:
+#   1 - Not a beaker env
+#   0 - It a beaker env
+#########################################
+is_beaker_env()
+{
+  if [ -z "${TEST}" ]; then
+    return 0
+  fi
+  return 1
 }

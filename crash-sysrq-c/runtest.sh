@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Test  [KG-KDUMP-R] "echo c > /proc/sysrq-trigger"
 
