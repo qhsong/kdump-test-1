@@ -1,6 +1,8 @@
 KDUMP TESTING
 --------------------------------
 
+[![Build Status](https://travis-ci.org/qhsong/kdump-test-1.svg?branch=qhsong)](https://travis-ci.org/qhsong/kdump-test-1) 
+
 This test suite will cover part kdump testing. It will base on RHEL/CentOS/Fedora release.
 The primary responsibility is to test kexec-tools package.
 We can find kexec-tools source code in http://pkgs.fedoraproject.org/cgit/rpms/kexec-tools.git
