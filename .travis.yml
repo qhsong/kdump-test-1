@@ -11,7 +11,8 @@ addons:
     - shellcheck
 
 script:
- - bash -c 'find . -name "*.sh"|xargs shellcheck'
+ - shellcheck -V
+ - find . -name "*.sh"|xargs shellcheck
 
 matrix:
   fast_finish: true
