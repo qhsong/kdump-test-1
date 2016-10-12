@@ -56,8 +56,8 @@ report_file()
     local filename="$1"
     if [[ -f "${filename}" ]]; then
         if [ -z "${JOBID}" ] && [ -z "${TASKID}" ]; then
-            rhts-submit-log -l "$filename"
-            #same as curl ${BEAKER_LAB_CONTROLLER_URL}/recipes/${RECIPEID}/tasks/${TASKID}/logs/${filename}:${filename} --upload-file ${filename}
+            # rhts-submit-log -l "$filename"
+            curl ${BEAKER_LAB_CONTROLLER_URL}/recipes/${RECIPEID}/tasks/${TASKID}/logs/${filename}:${filename} --upload-file ${filename}
         fi
     else
         debug "file ${filename} not exist!"
