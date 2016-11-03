@@ -1,3 +1,8 @@
+[General]
+name=kdump-test/crash-sysrq-c
+owner=qiao
+description="kfump-test for crash-sysrq-c"
+
 [restraint]
 entry_point=./runtest.sh
 repoRequires=lib
