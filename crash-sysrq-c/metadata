@@ -6,4 +6,4 @@ description="kfump-test for crash-sysrq-c"
 [restraint]
 entry_point=./runtest.sh
 repoRequires=lib
-use_pty=True
+use_pty=true
