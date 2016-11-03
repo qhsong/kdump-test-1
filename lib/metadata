@@ -3,3 +3,5 @@ name=/kdump-test/lib
 own=qiao
 description="kdump test lib"
 license="GPLv2"
+[restraint]
+
